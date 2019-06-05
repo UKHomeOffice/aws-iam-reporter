@@ -1,18 +1,27 @@
-import iam_report_generator
+"""Tests for the AWSAccountReportGenerator class
+"""
 import json
 import os
 from unittest import mock, TestCase
+
 import boto3
 from moto import mock_iam
-
+import iam_report_generator
 
 OUTPUT_FOLDER = "."
 
+
 @mock_iam
 class IamReportGeneratorTest(TestCase):
+    """Class for testing the AWSAccountReportGenerator methods
+    """
     REPORT_NAME = "iam_report.json"
 
     def setUp(self):
+        """Sets up fixtures for the tests
+
+        :return: None
+        """
         self.my_managed_policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -35,7 +44,7 @@ class IamReportGeneratorTest(TestCase):
             ]
         }
 
-        self.assume_role_policy_document= {
+        self.assume_role_policy_document = {
             "Version": "2012-10-17",
             "Statement": [{
                 "Effect": "Allow",
@@ -47,13 +56,20 @@ class IamReportGeneratorTest(TestCase):
         }
 
     def tearDown(self):
+        """Tears down fixtures for the tests
+
+        :return: None
+        """
         os.remove(IamReportGeneratorTest.REPORT_NAME)
 
-    @mock.patch.dict(os.environ,{
-        "OUTPUT_FOLDER":OUTPUT_FOLDER,
-
+    @mock.patch.dict(os.environ, {
+        "OUTPUT_FOLDER": OUTPUT_FOLDER,
     })
     def test_iam_report_created(self):
+        """Test the content of the IAM report
+
+        :return: None
+        """
         # Given
         iam = boto3.client("iam")
         user_name = "TEST_USER"
@@ -75,7 +91,7 @@ class IamReportGeneratorTest(TestCase):
         response = iam.create_role(
             Path="/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/",
             RoleName="AWSServiceRoleForApplicationAutoScaling_DynamoDBTable",
-            AssumeRolePolicyDocument= json.dumps(self.assume_role_policy_document)
+            AssumeRolePolicyDocument=json.dumps(self.assume_role_policy_document)
         )
         expected_role_id = response["Role"]["RoleId"]
         expected_role_arn = response["Role"]["Arn"]
@@ -101,7 +117,6 @@ class IamReportGeneratorTest(TestCase):
             assert user_policy["statements"][1]["Effect"] == "Allow"
             assert len(user_policy["statements"][1]["Action"]) == 5
 
-
             assert user_policy["statements"][1]["Action"][0] == "dynamodb:DeleteItem"
             assert user_policy["statements"][1]["Action"][1] == "dynamodb:GetItem"
             assert user_policy["statements"][1]["Action"][2] == "dynamodb:PutItem"
@@ -111,8 +126,11 @@ class IamReportGeneratorTest(TestCase):
             assert user_policy["statements"][1]["Resource"] == "RESOURCE_ARN"
 
             assert len(data["roles"]) == 1
-            assert data["roles"][0]["path"] == "/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/"
-            assert data["roles"][0]["role_name"] == "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+            assert data["roles"][0]["path"] \
+                == "/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/"
+            assert data["roles"][0][
+                "role_name"] == "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
             assert data["roles"][0]["role_id"] == expected_role_id
             assert data["roles"][0]["arn"] == expected_role_arn
-            assert data["roles"][0]["assume_role_policy_document"] == self.assume_role_policy_document
+            assert data["roles"][0][
+                "assume_role_policy_document"] == self.assume_role_policy_document
