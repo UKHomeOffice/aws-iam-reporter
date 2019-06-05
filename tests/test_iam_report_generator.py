@@ -1,21 +1,17 @@
 """Tests for the AWSAccountReportGenerator class
 """
 import json
-import os
-from unittest import mock, TestCase
+from unittest import TestCase
 
 import boto3
 from moto import mock_iam
 import iam_report_generator
-
-OUTPUT_FOLDER = "."
 
 
 @mock_iam
 class IamReportGeneratorTest(TestCase):
     """Class for testing the AWSAccountReportGenerator methods
     """
-    REPORT_NAME = "iam_report.json"
 
     def setUp(self):
         """Sets up fixtures for the tests
@@ -55,16 +51,6 @@ class IamReportGeneratorTest(TestCase):
             }]
         }
 
-    def tearDown(self):
-        """Tears down fixtures for the tests
-
-        :return: None
-        """
-        os.remove(IamReportGeneratorTest.REPORT_NAME)
-
-    @mock.patch.dict(os.environ, {
-        "OUTPUT_FOLDER": OUTPUT_FOLDER,
-    })
     def test_iam_report_created(self):
         """Test the content of the IAM report
 
@@ -97,40 +83,38 @@ class IamReportGeneratorTest(TestCase):
         expected_role_arn = response["Role"]["Arn"]
 
         # When
-        report_generator = iam_report_generator.AWSAccountReportGenerator()
-        report_generator.generate_report()
+        json_report = iam_report_generator.AWSAccountReportGenerator.generate_report()
 
         # Then
-        with open("{}/{}".format(OUTPUT_FOLDER, IamReportGeneratorTest.REPORT_NAME)) as json_file:
-            data = json.load(json_file)
-            assert len(data["users"]) == 1
-            assert data["users"][0]["user_name"] == "TEST_USER"
-            user_policy = data["users"][0]["user_policy"]
-            assert user_policy["default_version_id"] == "v1"
+        data = json.loads(json_report)
+        assert len(data["users"]) == 1
+        assert data["users"][0]["user_name"] == "TEST_USER"
+        user_policy = data["users"][0]["user_policy"]
+        assert user_policy["default_version_id"] == "v1"
 
-            assert len(user_policy["statements"]) == 2
+        assert len(user_policy["statements"]) == 2
 
-            assert user_policy["statements"][0]["Effect"] == "Allow"
-            assert user_policy["statements"][0]["Action"] == "logs:CreateLogGroup"
-            assert user_policy["statements"][0]["Resource"] == "RESOURCE_ARN"
+        assert user_policy["statements"][0]["Effect"] == "Allow"
+        assert user_policy["statements"][0]["Action"] == "logs:CreateLogGroup"
+        assert user_policy["statements"][0]["Resource"] == "RESOURCE_ARN"
 
-            assert user_policy["statements"][1]["Effect"] == "Allow"
-            assert len(user_policy["statements"][1]["Action"]) == 5
+        assert user_policy["statements"][1]["Effect"] == "Allow"
+        assert len(user_policy["statements"][1]["Action"]) == 5
 
-            assert user_policy["statements"][1]["Action"][0] == "dynamodb:DeleteItem"
-            assert user_policy["statements"][1]["Action"][1] == "dynamodb:GetItem"
-            assert user_policy["statements"][1]["Action"][2] == "dynamodb:PutItem"
-            assert user_policy["statements"][1]["Action"][3] == "dynamodb:Scan"
-            assert user_policy["statements"][1]["Action"][4] == "dynamodb:UpdateItem"
+        assert user_policy["statements"][1]["Action"][0] == "dynamodb:DeleteItem"
+        assert user_policy["statements"][1]["Action"][1] == "dynamodb:GetItem"
+        assert user_policy["statements"][1]["Action"][2] == "dynamodb:PutItem"
+        assert user_policy["statements"][1]["Action"][3] == "dynamodb:Scan"
+        assert user_policy["statements"][1]["Action"][4] == "dynamodb:UpdateItem"
 
-            assert user_policy["statements"][1]["Resource"] == "RESOURCE_ARN"
+        assert user_policy["statements"][1]["Resource"] == "RESOURCE_ARN"
 
-            assert len(data["roles"]) == 1
-            assert data["roles"][0]["path"] \
-                == "/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/"
-            assert data["roles"][0][
-                "role_name"] == "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
-            assert data["roles"][0]["role_id"] == expected_role_id
-            assert data["roles"][0]["arn"] == expected_role_arn
-            assert data["roles"][0][
-                "assume_role_policy_document"] == self.assume_role_policy_document
+        assert len(data["roles"]) == 1
+        assert data["roles"][0]["path"] \
+            == "/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/"
+        assert data["roles"][0][
+            "role_name"] == "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+        assert data["roles"][0]["role_id"] == expected_role_id
+        assert data["roles"][0]["arn"] == expected_role_arn
+        assert data["roles"][0][
+            "assume_role_policy_document"] == self.assume_role_policy_document
