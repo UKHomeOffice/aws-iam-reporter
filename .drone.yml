@@ -1,0 +1,23 @@
+pipeline:
+  lint_python:
+    image: python:3.7-alpine
+    commands:
+      - apk add --no-cache gcc libressl-dev libffi-dev musl-dev
+      - python3 -m venv venv
+      - source venv/bin/activate
+      - pip install -r requirements.txt
+      - find . -path ./venv -prune -o -iname "*.py" | grep -v venv | xargs pylint
+      - deactivate
+    when:
+      event:
+        - push
+
+  test_python:
+    image: python:3.7-alpine
+    commands:
+      - source venv/bin/activate
+      - python -m pytest --rootdir=tests
+      - deactivate
+    when:
+      event:
+        - push
