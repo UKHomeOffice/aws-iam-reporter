@@ -59,8 +59,8 @@ A python script that downloads iam reports mapping all the IAM roles and permiss
 }
 ```
 
-The script expects OUTPUT_FOLDER set as an environment variable specifying where to write the report.
-
 Command to run the script
 
 `python iam_report_generatore.py`
+
+The script prints the report in the console.
